@@ -8,7 +8,7 @@ from aiogram.types import CallbackQuery, Message
 
 from app.handlers.states import SearchStates
 from app.keyboards.menus import main_menu, search_result_keyboard
-from app.services.search import search_summary
+from app.services.search import live_search_summary
 from app.services.users import get_city
 from app.utils.formatting import format_search_card
 
@@ -17,7 +17,13 @@ router = Router()
 
 async def _do_search(message: Message, query: str) -> None:
     city = get_city(message.from_user.id)
-    summary = search_summary(query, city=city)
+    # Показываем «печатает…», т.к. живой опрос источников занимает пару секунд
+    try:
+        await message.bot.send_chat_action(message.chat.id, "typing")
+    except Exception:  # noqa: BLE001
+        pass
+    # Живой поиск по реальным источникам (Onliner, Kufar) + фолбэк на демо-каталог
+    summary = await live_search_summary(query, city=city)
     text = format_search_card(summary)
     has_results = bool(summary["new"] or summary["used"])
     await message.answer(

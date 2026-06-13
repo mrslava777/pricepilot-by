@@ -63,8 +63,61 @@ def search_offers(query: str, city: str | None = None, condition: str | None = N
         return [_offer_to_dict(o) for o in offers]
 
 
+def _build_summary(query: str, city: str | None,
+                   new_offers: list[dict], used_offers: list[dict]) -> dict:
+    """Собирает карточку-сводку из готовых списков предложений."""
+    new_offers = sorted(new_offers, key=lambda o: o["price"])
+    used_offers = sorted(used_offers, key=lambda o: o["price"])
+    all_offers = new_offers + used_offers
+
+    summary = {
+        "query": query,
+        "city": city,
+        "new": new_offers,
+        "used": used_offers,
+        "min_new": new_offers[0]["price"] if new_offers else None,
+        "min_used": used_offers[0]["price"] if used_offers else None,
+        "stats_new": _stats(new_offers),
+        "stats_used": _stats(used_offers),
+        "stats_all": _stats(all_offers),
+        "sources": sorted({o["source"] for o in all_offers}),
+    }
+    if new_offers:
+        prices = [o["price"] for o in new_offers]
+        summary["savings_new"] = round(max(prices) - min(prices), 2)
+    else:
+        summary["savings_new"] = 0
+    if new_offers and used_offers:
+        summary["savings_used"] = round(new_offers[0]["price"] - used_offers[0]["price"], 2)
+    else:
+        summary["savings_used"] = 0
+    return summary
+
+
+async def live_search_summary(query: str, city: str | None = None) -> dict:
+    """Сводка по живым данным реальных источников (Onliner, Kufar, …).
+
+    Если источники недоступны/пусты — откатывается на демо-каталог из БД.
+    """
+    # Импортируем здесь, чтобы не создавать циклических зависимостей
+    from app.parsers.aggregator import fetch_live_dicts
+
+    try:
+        offers = await fetch_live_dicts(query, city=city)
+    except Exception:  # noqa: BLE001
+        offers = []
+
+    if offers:
+        new_offers = [o for o in offers if o["condition"] == "new"]
+        used_offers = [o for o in offers if o["condition"] == "used"]
+        return _build_summary(query, city, new_offers, used_offers)
+
+    # Фолбэк: демо-каталог
+    return search_summary(query, city=city)
+
+
 def search_summary(query: str, city: str | None = None) -> dict:
-    """Сводка: новые и б/у предложения + статистика и экономия."""
+    """Сводка: новые и б/у предложения + статистика и экономия (демо-БД)."""
     new_offers = search_offers(query, city=city, condition="new")
     used_offers = search_offers(query, city=city, condition="used")
     all_offers = new_offers + used_offers

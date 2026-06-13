@@ -28,11 +28,38 @@ import logging
 from app.database.db import get_session
 from app.models.models import City, Offer, Product, Store
 from app.parsers.base import BaseParser, ParsedOffer
+from app.parsers.kufar import KufarParser
+from app.parsers.onliner import OnlinerParser
 
 logger = logging.getLogger(__name__)
 
-# Список активных парсеров. Пуст = используется только демо-каталог.
-ENABLED_PARSERS: list[BaseParser] = []
+# Список активных парсеров реальных источников Беларуси.
+# Onliner — новые товары и цены по магазинам (вся техника/электроника).
+# Kufar  — объявления (Б/У и новые от частников).
+# Пустой список => бот работает только на демо-каталоге.
+ENABLED_PARSERS: list[BaseParser] = [
+    OnlinerParser(max_products=5, expand_top=2, max_positions=6),
+    KufarParser(size=12, max_items=8),
+]
+
+
+def offer_to_dict(off: ParsedOffer) -> dict:
+    """Приводит ParsedOffer к виду, который ожидает карточка поиска."""
+    return {
+        "product": off.title,
+        "store": off.store,
+        "city": off.city,
+        "price": off.price,
+        "condition": off.condition,
+        "url": off.url,
+        "source": off.source,
+    }
+
+
+async def fetch_live_dicts(query: str, city: str | None = None) -> list[dict]:
+    """Опрашивает реальные источники и возвращает предложения как словари."""
+    offers = await fetch_all(query, city)
+    return [offer_to_dict(o) for o in offers]
 
 
 async def fetch_all(query: str, city: str | None = None) -> list[ParsedOffer]:

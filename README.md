@@ -1,0 +1,116 @@
+# 🛒 PricePilot BY
+
+**Найду дешевле. Скажу когда покупать.**
+
+Telegram-бот для поиска самых дешёвых товаров в Беларуси. MVP на бесплатном/open-source стеке.
+
+## 🚀 Деплой 24/7 на Railway (бесплатно)
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/template?template=https://github.com/mrslava777/pricepilot-by)
+
+1. Нажми кнопку **Deploy on Railway** выше.
+2. Войди через GitHub и выбери репозиторий `pricepilot-by`.
+3. В разделе **Variables** добавь переменную `BOT_TOKEN` со своим токеном от [@BotFather](https://t.me/BotFather).
+4. Нажми **Deploy** — Railway соберёт проект по `Dockerfile` и запустит бота 24/7.
+
+> Railway сам читает `railway.json` и `Dockerfile`, ставит зависимости и запускает `python run.py`.
+
+## ✨ Функции
+
+- 🔍 **Поиск товаров** по названию (iPhone 17, Ноутбук Lenovo, PlayStation 6…)
+- 📍 **Выбор города**: Минск, Гомель, Витебск, Брест, Гродно, Могилев (сохраняется)
+- 📊 **Аналитика в карточке**: минимальная цена, **средняя цена**, **количество предложений**, **источник данных**
+- 🆕 / ♻️ **Новые и Б/У товары** с разницей в цене
+- 🔔 **Подписка на снижение цены** — уведомление, когда цена опустится ниже заданной
+- ❤️ **Избранное** — сохранение товаров и быстрая проверка цен
+- 🧩 **REST API** на FastAPI (`/search`, `/products`, `/cities`)
+- 🕸 **Модуль парсеров** (`app/parsers/`) — рабочие заготовки на `aiohttp + BeautifulSoup` и RSS/XML-фидах
+
+## 🧰 Технологии
+
+Python · Aiogram 3 · SQLite (SQLAlchemy) · FastAPI · aiohttp · BeautifulSoup · Docker
+
+## 📁 Структура
+
+```
+pricepilot_bot/
+├── app/
+│   ├── config.py            # настройки (.env)
+│   ├── bot.py               # бот, диспетчер, фоновые подписки
+│   ├── handlers/            # Telegram-хендлеры (старт, поиск, город, избранное, подписки, помощь)
+│   ├── keyboards/           # меню и инлайн-кнопки
+│   ├── services/            # бизнес-логика (поиск, пользователи, избранное, подписки)
+│   ├── parsers/             # парсеры источников (BS4 / RSS-XML) + агрегатор
+│   ├── database/            # подключение к БД + сидер демо-каталога
+│   ├── models/              # модели SQLAlchemy
+│   ├── api/                 # FastAPI-сервер
+│   └── utils/               # форматирование карточек
+├── run.py                   # запуск бота
+├── requirements.txt
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+└── README.md
+```
+
+## 🚀 Запуск
+
+### 1. Получите токен
+Напишите [@BotFather](https://t.me/BotFather) → `/newbot` → скопируйте токен.
+
+### 2. Настройте окружение
+```bash
+cp .env.example .env
+# вставьте BOT_TOKEN=... в .env
+```
+
+### Вариант A — Docker (рекомендуется)
+```bash
+docker compose up --build
+```
+Поднимутся два сервиса: `bot` (Telegram) и `api` (FastAPI на http://localhost:8000/docs).
+
+### Вариант B — локально
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# Бот:
+python run.py
+
+# (опционально) API в отдельном терминале:
+uvicorn app.api.server:app --reload
+```
+
+При первом запуске БД создаётся автоматически и наполняется демо-каталогом.
+
+## 📡 О данных и парсерах
+
+В Беларуси нет единого бесплатного публичного API цен по магазинам, поэтому
+**в MVP цены берутся из встроенного демо-каталога** (`app/database/seed.py`) —
+бот сразу работает и демонстрирует весь UX.
+
+Архитектура парсеров заложена реально:
+- `app/parsers/http_parser.py` — `aiohttp + BeautifulSoup`, веб-парсинг по CSS-селекторам (fallback);
+- `app/parsers/rss_parser.py` — разбор RSS/XML/YML-фидов магазинов;
+- `app/parsers/aggregator.py` — параллельный сбор и запись предложений в БД.
+
+Чтобы подключить реальный источник — добавьте парсер в
+`aggregator.ENABLED_PARSERS` (пример есть в docstring файла). Интерфейс сервисов
+и карточек менять не нужно: поле «источник» уже отображается в результатах.
+
+## 🔌 API (примеры)
+
+```
+GET /search?q=iPhone%2017&city=Минск
+GET /products
+GET /cities
+GET /health
+```
+
+## 🗺 Дальнейшее развитие
+
+- Подключение реальных парсеров (Onliner / Kufar / товарные YML-фиды сетей)
+- История цен и графики
+- AI-рекомендации «покупать / подождать»
+- Умная продуктовая корзина

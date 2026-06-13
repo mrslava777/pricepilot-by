@@ -28,6 +28,7 @@ import logging
 from app.database.db import get_session
 from app.models.models import City, Offer, Product, Store
 from app.parsers.base import BaseParser, ParsedOffer
+from app.parsers.deal import DealParser
 from app.parsers.kufar import KufarParser
 from app.parsers.onliner import OnlinerParser
 
@@ -35,11 +36,13 @@ logger = logging.getLogger(__name__)
 
 # Список активных парсеров реальных источников Беларуси.
 # Onliner — новые товары и цены по магазинам (вся техника/электроника).
-# Kufar  — объявления (Б/У и новые от частников).
+# Kufar   — объявления (Б/У и новые от частников).
+# Deal.by — маркетплейс EVO: тысячи магазинов, товары + ПРОДУКТЫ питания.
 # Пустой список => бот работает только на демо-каталоге.
 ENABLED_PARSERS: list[BaseParser] = [
     OnlinerParser(max_products=5, expand_top=2, max_positions=6),
     KufarParser(size=12, max_items=8),
+    DealParser(max_items=8),
 ]
 
 

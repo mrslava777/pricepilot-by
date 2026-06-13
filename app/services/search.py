@@ -63,9 +63,27 @@ def search_offers(query: str, city: str | None = None, condition: str | None = N
         return [_offer_to_dict(o) for o in offers]
 
 
+def _drop_price_outliers(offers: list[dict]) -> list[dict]:
+    """Убирает аномально дешёвые позиции (детали/аксессуары/мелочёвка),
+    которые иначе подменяют «минимальную цену» по товару.
+
+    Отсекаем предложения дешевле 12% медианной цены группы.
+    """
+    if len(offers) < 5:
+        return offers
+    prices = sorted(o["price"] for o in offers)
+    median = prices[len(prices) // 2]
+    threshold = median * 0.12
+    filtered = [o for o in offers if o["price"] >= threshold]
+    # Не вычищаем всё подчистую — подстраховка
+    return filtered or offers
+
+
 def _build_summary(query: str, city: str | None,
                    new_offers: list[dict], used_offers: list[dict]) -> dict:
     """Собирает карточку-сводку из готовых списков предложений."""
+    new_offers = _drop_price_outliers(new_offers)
+    used_offers = _drop_price_outliers(used_offers)
     new_offers = sorted(new_offers, key=lambda o: o["price"])
     used_offers = sorted(used_offers, key=lambda o: o["price"])
     all_offers = new_offers + used_offers
